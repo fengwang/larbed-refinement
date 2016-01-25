@@ -1,0 +1,20 @@
+
+#include <f/matrix/details/crtp/typedef.hpp>
+
+namespace f
+{
+    template<typename Matrix, typename Type, typename Allocator>
+     struct crtp_
+     {
+        typedef Matrix                                                zen_type; 
+        typedef crtp_typedef<Type, Allocator>                         type_proxy_type;
+        typedef typename type_proxy_type::iterator                    iterator;
+        typedef typename type_proxy_type::reverse_iterator            reverse_iterator;
+        typedef typename type_proxy_type::stride_iterator             stride_iterator;
+        typedef typename type_proxy_type::reverse_stride_iterator     reverse_stride_iterator;
+     
+     };//struct 
+
+}
+
+

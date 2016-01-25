@@ -1,0 +1,16 @@
+obj
+bin
+lib
+orig
+*.orig
+*.a
+*.aux
+*.dvi
+*.fig
+*.img
+*.log
+*.o
+*.orig
+*.ps
+.*.swp
+.DS_Store
