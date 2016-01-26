@@ -3,7 +3,6 @@
 #include <f/cuda_pattern/cuda_pattern.hpp>
 #include <f/date/date_to_string.hpp>
 #include <f/variate_generator/variate_generator.hpp>
-
 #include <f/pattern_refinement/reflection_residual.hpp>
 
 #include <vector>
@@ -22,10 +21,10 @@ int main()
 
     unsigned long const diffraction_dim = 121;
 
+    f::variate_generator<double> vg( 0.0, 0.01 );
+    std::generate( ug_initial.begin(), ug_initial.end(), vg );
 
-	f::variate_generator<double> vg( 0.0, 0.01 );
-	std::generate( ug_initial.begin(), ug_initial.end(), vg );
-
+    //Enforcing Friedel's law
     f::reflection_residual rr{ std::string{"./matrix/beam/SrTiO3.txt"}, std::string{"./matrix/intensity/SrTiO3.txt"}, pt.ug_size };
     auto const& reflection_merit = rr.make_normal_residual();
 
@@ -37,16 +36,7 @@ int main()
     {
         double const res = std::inner_product( x, x+unknowns, x, 0.0 );
 
-        double rms = 0.0;
-        double* itor = x + 3;
-        for ( unsigned long idx = 0; idx != zos; ++idx )
-        {
-            double rx = *itor;
-            rms += rx*rx;
-            itor += 2;
-        }
-
-        return reflection_merit( x ) + merit_function_( x ) + res * 100.9 + rms * 1009.00;
+        return reflection_merit( x ) + merit_function_( x ) + res * 100.9;
     };
 
     f::simple_steepest_descent<double> sd( merit_function, pt.ug_size * 2 + 1 );
