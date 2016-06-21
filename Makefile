@@ -25,7 +25,7 @@ default: direct_cuda_pattern
 
 direct_cuda_pattern: src/direct_cuda_pattern.cc
 	$(CXX) $(CXXFLAGS) -c src/direct_cuda_pattern.cc -o $(OBJECTS_DIR)/direct_cuda_pattern.o $(INCPATH)
-	$(CUDACXX64) src/cuda_pattern/cuda_pattern.cu -o $(OBJECTS_DIR)/_cuda_pattern.o $(INCPATH) -m64 -dc -gencode arch=compute_35,code=sm_35 --relocatable-device-code true  -Xptxas -v
+	$(CUDACXX64) src/cuda_pattern.cu -o $(OBJECTS_DIR)/_cuda_pattern.o $(INCPATH) -m64 -dc -gencode arch=compute_35,code=sm_35 --relocatable-device-code true  -Xptxas -v
 	$(CUDACXX64) -dlink $(OBJECTS_DIR)/_cuda_pattern.o -arch=sm_35 -o $(OBJECTS_DIR)/cuda_pattern.o -m64 -lcudadevrt $(CUDALIB64) -rdc=true -Xptxas -v
 	$(CXX) -o $(BIN_DIR)/direct_cuda_pattern $(OBJECTS_DIR)/_cuda_pattern.o $(OBJECTS_DIR)/direct_cuda_pattern.o $(OBJECTS_DIR)/cuda_pattern.o  -lcudadevrt -lcublas -lcudart -m64 $(CUDALIB64) $(LFLAGS) 
 
