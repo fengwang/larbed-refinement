@@ -13,7 +13,8 @@ int main()
     int const thickness_ = 14.5;
     double const init_thickness = thickness_;
     std::complex<double> const thickness{ 0.0, init_thickness  };
-    auto pt = f::make_pattern("testdata/new_txt", thickness);
+    //auto pt = f::make_pattern("testdata/new_txt", thickness);
+    auto pt = f::make_simulate_pattern("testdata/new_txt", thickness);
 
     f::cuda_pattern cpt{ pt, 1 };
     
