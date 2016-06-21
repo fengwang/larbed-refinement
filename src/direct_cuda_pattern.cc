@@ -11,12 +11,13 @@
 int main()
 {
     int const thickness_ = 14.5;
+    int gpu_id = 1;
     double const init_thickness = thickness_;
     std::complex<double> const thickness{ 0.0, init_thickness  };
     //auto pt = f::make_pattern("testdata/new_txt", thickness);
-    auto pt = f::make_simulate_pattern("testdata/new_txt", thickness);
+    auto pt = f::make_simulated_pattern("testdata/new_txt", thickness);
 
-    f::cuda_pattern cpt{ pt, 1 };
+    f::cuda_pattern cpt{ pt, gpu_id };
     
     std::vector<double> ug_initial;
     ug_initial.resize( pt.ug_size*2 + 1 );
