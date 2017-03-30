@@ -40,19 +40,24 @@ namespace f
         matrix_vector_type                      diag;       //diag[][][]
         matrix_vector_type                      intensity;  //intensity[][][]
         complex_matrix_type                     ug;         //
+        matrix_vector_type                      weights;  //weights[][][]
+
+        void dump( std::string const& paht )
+        {
+        }
 
         void update_thickness( value_type val )
         {
             thickness = complex_type( 0.0, val );
         }
-
+/*
         void add_noise( T const level = 0.01 )
         {
             variate_generator<T> vg( T{-1.0}, T{1.0} );
             for ( auto& mat : intensity )
                 std::for_each( mat.begin(), mat.end(), [&vg,level]( value_type& x ) { x += vg() * level; });
         }
-
+*/
         void renormalize_intensities()
         {
             for ( auto&& it : intensity )
@@ -87,7 +92,7 @@ namespace f
         void update_diag( matrix<double> const& dia )
         {
             assert( dia.row() == diag[0].row() );
-            
+
             unsigned long const size_to_update = std::min( diag.size(), dia.col() );
 
             for ( unsigned long index = 0; index != size_to_update; ++index )
@@ -103,7 +108,7 @@ namespace f
 
         void simulate_intensity( complex_matrix_type const& ug_ )
         {
-            assert( ug_.size() == ug_size ); 
+            assert( ug_.size() == ug_size );
 
             matrix_vector_type new_intensity;
 
@@ -125,7 +130,7 @@ namespace f
          *TODO: optimization herje
         void simulate_intensity( complex_matrix_type const& ug_, matrix_vector_type& new_intensity_ )
         {
-            assert( ug_.size() == ug_size ); 
+            assert( ug_.size() == ug_size );
             new_intensity_.resize( tilt_size );
 
             for ( size_type tilt_index = 0; tilt_index != tilt_size; ++tilt_index )
@@ -164,7 +169,7 @@ namespace f
 
             os << "ug:\n"  << pt.ug << "\n";
 #endif
-            return os; 
+            return os;
         }
 
     };//struct pattern
@@ -196,7 +201,7 @@ namespace f
         std::string const& ug_file_path = dir_path_ + std::string{"/_UgMasterList.txt"};
         std::ifstream ifs_ug{ ug_file_path };
         //if ( !ifs_ug.good() ) return pt;
-        if ( !ifs_ug.good() )
+        if ( ifs_ug.good() )
         {
             std::stringstream iss;
             std::copy( std::istreambuf_iterator<char>{ifs_ug}, std::istreambuf_iterator<char>{}, std::ostreambuf_iterator<char>{iss} );
@@ -215,9 +220,24 @@ namespace f
                 pt.ug[r][0] = complex_type{ ug_tmp[r][1], ug_tmp[r][2] };
         }
 
+        {
+            std::string const& ug_file_path = dir_path_ + std::string{"/ug.txt"};
+            if ( is_file_exist( ug_file_path ) )
+            {
+                matrix<double> current_ug;
+                current_ug.load( ug_file_path );
+                assert( current_ug.row() && "Empty Ug file." );
+                assert( current_ug.col() == 2 && "Ug real/complex term missing!" );
+                pt.ug.resize( current_ug.row(), 1 );
+                for ( auto r = 0UL; r != current_ug.row(); ++r )
+                    pt.ug[r][0] = complex_type{ current_ug[r][0], current_ug[r][1] };
+            }
+        }
+
         size_matrix_type ar_x;
         matrix_type diag_x;
         matrix_type intensity_x;
+        matrix_type weight_x;
         for ( size_type index = 0; true; ++index )
         {
             std::string const& id = std::to_string( index );
@@ -225,7 +245,7 @@ namespace f
             std::string const& diag_file_path = dir_path_ + std::string{"/Diag_"} + id + std::string{".txt"};
             std::string const& intensity_file_path = dir_path_ + std::string{"/Intensities_"} + id + std::string{".txt"};
 
-            if ( ! ( is_file_exist( ar_file_path ) && is_file_exist( diag_file_path ) && is_file_exist( intensity_file_path ) ) ) break; 
+            if ( ! ( is_file_exist( ar_file_path ) && is_file_exist( diag_file_path ) && is_file_exist( intensity_file_path ) ) ) break;
 
             ar_x.load( ar_file_path );
             diag_x.load( diag_file_path );
@@ -240,6 +260,18 @@ namespace f
             pt.diag.push_back( diag_x );
             pt.intensity.push_back( intensity_x );
 
+            //load weights
+            std::string const& weights_file_path = dir_path_ + std::string{"/Weights_"} + id + std::string{".txt"};
+            if ( ! is_file_exist( weights_file_path) )
+            {
+                weight_x.resize( intensity_x.row(), intensity_x.col() );
+                std::fill( weight_x.begin(), weight_x.end(), 1.0 );
+            }
+            else
+            {
+                weight_x.load( weights_file_path );
+            }
+            pt.weights.push_back( weight_x );
         }
 
         pt.ug_size = 0;
@@ -260,6 +292,8 @@ namespace f
         pt.simulate_intensity();
         return pt;
     }
+
+#if 0
 
     template< typename T >
     pattern<T> const make_pattern_n( unsigned long const max_pattern, std::string const& dir_path_, std::complex<T> const& thickness_, std::size_t column_index_ = 0 )
@@ -310,7 +344,7 @@ namespace f
             std::string const& diag_file_path = dir_path_ + std::string{"/Diag_"} + id + std::string{".txt"};
             std::string const& intensity_file_path = dir_path_ + std::string{"/Intensities_"} + id + std::string{".txt"};
 
-            if ( ! ( is_file_exist( ar_file_path ) && is_file_exist( diag_file_path ) && is_file_exist( intensity_file_path ) ) ) break; 
+            if ( ! ( is_file_exist( ar_file_path ) && is_file_exist( diag_file_path ) && is_file_exist( intensity_file_path ) ) ) break;
 
             ar_x.load( ar_file_path );
             diag_x.load( diag_file_path );
@@ -325,7 +359,7 @@ namespace f
             pt.diag.push_back( diag_x );
             pt.intensity.push_back( intensity_x );
 
-            
+
             if ( max_pattern == index + 1 ) break;
         }
 
@@ -394,7 +428,8 @@ namespace f
 
         return ug_norm;
     }
-
+#endif
+/*
     template< typename T, typename Cond >
     pattern<T> const make_pattern( Cond cond_, std::string const& dir_path_, std::complex<T> const& thickness_, std::size_t column_index_ = 0 )
     {
@@ -416,7 +451,7 @@ namespace f
         std::ifstream ifs_ug{ ug_file_path };
         //if ( !ifs_ug.good() ) return pt;
 
-        if ( ifs_ug.good() ) 
+        if ( ifs_ug.good() )
         {
             std::stringstream iss;
             std::copy( std::istreambuf_iterator<char>{ifs_ug}, std::istreambuf_iterator<char>{}, std::ostreambuf_iterator<char>{iss} );
@@ -447,7 +482,7 @@ namespace f
 
             if ( ! ( is_file_exist( ar_file_path ) && is_file_exist( diag_file_path ) && is_file_exist( intensity_file_path ) ) )
             {
-                break; 
+                break;
             }
             if ( !cond_(index) ) continue;
 
@@ -479,7 +514,7 @@ namespace f
 
         return pt;
     }
-
+*/
 
 }//namespace f
 

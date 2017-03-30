@@ -18,7 +18,7 @@ __global__ void Dznrm2( unsigned long m, double2 *dA, double *dxnorm )
 
     double lsum = 0.0;
 
-    for( unsigned long j = i; j < m; j += 128 ) 
+    for( unsigned long j = i; j < m; j += 128 )
     {
         double const re = dA[j].x;
         double const im = dA[j].y;
@@ -48,7 +48,7 @@ __global__ void Dasum( unsigned long m, double2 *dA, double *dxnorm )
 
     double lsum = 0.0;
 
-    for( unsigned long j = i; j < m; j += 128 ) 
+    for( unsigned long j = i; j < m; j += 128 )
     {
         double const re = dA[j].x;
         double const im = dA[j].y;
@@ -135,7 +135,7 @@ __global__ void Dznrm2( unsigned long int n, double2* x, double* the_norm )
     {
         const int i = threadIdx.x;
 
-        for( unsigned long j = i; j < m; j += 128 ) 
+        for( unsigned long j = i; j < m; j += 128 )
         {
             dA[j].x *= real;
             dA[j].y *= real;
@@ -212,7 +212,7 @@ __global__ void Dznrm2( unsigned long int n, double2* x, double* the_norm )
     {
         unsigned long const i = threadIdx.x;
 
-        for( unsigned long j = i; j < dims; j += 128 ) 
+        for( unsigned long j = i; j < dims; j += 128 )
         {
             (*(dst+j)).x = (*(src+j)).x;
             (*(dst+j)).y = (*(src+j)).y;
@@ -225,7 +225,7 @@ __global__ void Dznrm2( unsigned long int n, double2* x, double* the_norm )
         double R = 0.0;
         double I = 0.0;
 
-        for( unsigned long j = i; j < dims; j += 128 ) 
+        for( unsigned long j = i; j < dims; j += 128 )
         {
             R = (*(src+j)).x;
             I = (*(src+j)).y;
@@ -262,14 +262,13 @@ extract_intensity_diff( double2* s, double* I_exp, double* I_diff, unsigned long
 }
 
 __global__ void
-extract_intensity_diff_with_offset( double2* s, double* I_exp, double* I_diff, unsigned long dim, unsigned long column_index, double ac_offset, double dc_offset )
+extract_intensity_diff_with_offset( double2* s, double* weights, double* I_exp, double* I_diff, unsigned long dim, unsigned long column_index, double ac_offset, double dc_offset )
 {
     int const I_offset = threadIdx.x;
     int const S_offset = column_index + threadIdx.x * dim;
     double const norm = cuCabs(*(s+S_offset));
-    *(I_diff+I_offset) = *(I_exp+I_offset) - norm * norm * ac_offset - dc_offset;
+    *(I_diff+I_offset) = ( *(I_exp+I_offset) - norm * norm * ac_offset - dc_offset ) * weights[I_offset];
 }
-
 
 __global__ void
 sum_diag( double2* a, unsigned long dim, double real, double imag )
@@ -306,7 +305,7 @@ sum_diag( double2* a, unsigned long dim, double real, double imag )
  * 6) extract one column
  */
 __global__ void
-make_individual_pattern_intensity_diff( double* cuda_ug, unsigned long* cuda_ar, double* cuda_diag, double thickness, unsigned long* cuda_dim, double* cuda_I_exp, double* cuda_I_diff, unsigned long column_index, double2* cuda_cache, unsigned long max_dim, unsigned long tilt_size )
+make_individual_pattern_intensity_diff( double* cuda_weights, double* cuda_ug, unsigned long* cuda_ar, double* cuda_diag, double thickness, unsigned long* cuda_dim, double* cuda_I_exp, double* cuda_I_diff, unsigned long column_index, double2* cuda_cache, unsigned long max_dim, unsigned long tilt_size )
 {
     unsigned long const tilt_index = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -318,6 +317,7 @@ make_individual_pattern_intensity_diff( double* cuda_ug, unsigned long* cuda_ar,
     double* diag = cuda_diag + tilt_index * max_dim;
     double* I_exp = cuda_I_exp + tilt_index * max_dim;
     double* I_diff = cuda_I_diff + tilt_index * max_dim;
+    double* weights = cuda_weights + tilt_index * max_dim;
     double2* cache = cuda_cache + 6 * tilt_index * max_dim * max_dim;
 
     unsigned long dimdim = dim*dim;
@@ -346,7 +346,7 @@ make_individual_pattern_intensity_diff( double* cuda_ug, unsigned long* cuda_ar,
     kernel_assert( (Dznrm2<<<1,128>>>( dimdim, a_, the_norm )) );
     //kernel_assert( (Dasum<<<1,128>>>( dimdim, a_, the_norm )) );
     cuda_assert( cudaDeviceSynchronize() );
-    
+
     //double const ratio = (*the_norm) * 53.71920351148152;
     double const ratio = (*the_norm) / 5.371920351148152;
     unsigned long const scaler = ratio < 1.0 ? 0 : ceil(log2(ratio));
@@ -445,16 +445,17 @@ make_individual_pattern_intensity_diff( double* cuda_ug, unsigned long* cuda_ar,
     //kernel_assert( (extract_intensity_diff<<<1,dim>>>( s, I_exp, I_diff, dim, column_index )) );
     double const ac_offset = cuda_ug[0];
     double const dc_offset = cuda_ug[1];
-    kernel_assert( (extract_intensity_diff_with_offset<<<1,dim>>>( s, I_exp, I_diff, dim, column_index, ac_offset, dc_offset )) );
+    //kernel_assert( (extract_intensity_diff_with_offset<<<1,dim>>>( s, I_exp, I_diff, dim, column_index, ac_offset, dc_offset )) );
+    kernel_assert( (extract_intensity_diff_with_offset<<<1,dim>>>( s, weights, I_exp, I_diff, dim, column_index, ac_offset, dc_offset )) );
     cuda_assert( cudaDeviceSynchronize() );
 }
 
-void make_pattern_intensity_diff( double* cuda_ug, unsigned long* cuda_ar, double* cuda_diag, double thickness, unsigned long* cuda_dim, double* cuda_I_exp, double* cuda_I_diff, unsigned long column_index, double2* cuda_cache, unsigned long tilt_size, unsigned long max_dim )
+void make_pattern_intensity_diff( double* cuda_weights, double* cuda_ug, unsigned long* cuda_ar, double* cuda_diag, double thickness, unsigned long* cuda_dim, double* cuda_I_exp, double* cuda_I_diff, unsigned long column_index, double2* cuda_cache, unsigned long tilt_size, unsigned long max_dim )
 {
     unsigned long const threads = 64;
     unsigned long const grids = (tilt_size + threads - 1)/threads;
 
-    kernel_assert( ( make_individual_pattern_intensity_diff<<<grids, threads>>>( cuda_ug, cuda_ar, cuda_diag, thickness, cuda_dim, cuda_I_exp, cuda_I_diff, column_index, cuda_cache, max_dim, tilt_size ) ) );
+    kernel_assert( ( make_individual_pattern_intensity_diff<<<grids, threads>>>( cuda_weights, cuda_ug, cuda_ar, cuda_diag, thickness, cuda_dim, cuda_I_exp, cuda_I_diff, column_index, cuda_cache, max_dim, tilt_size ) ) );
     cuda_assert( cudaDeviceSynchronize() );
 }
 

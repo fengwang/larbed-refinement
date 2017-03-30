@@ -14,11 +14,20 @@ int main()
     int gpu_id = 1;
     double const init_thickness = thickness_;
     std::complex<double> const thickness{ 0.0, init_thickness  };
-    //auto pt = f::make_pattern("testdata/new_txt", thickness);
     auto pt = f::make_simulated_pattern("testdata/new_txt", thickness);
 
+#if 0
+    auto pt = f::make_pattern("testdata/new_txt", thickness);
+    {   //update fake ug
+        f:matrix<double> ug;
+        ug.load( "./testdata/new_txt/SrTiO3_full.txt" );
+        pt.update_ug( ug );
+    }
+    pt.simulate_intensity();
+#endif
+
     f::cuda_pattern cpt{ pt, gpu_id };
-    
+
     std::vector<double> ug_initial;
     ug_initial.resize( pt.ug_size*2 + 1 );
     std::fill( ug_initial.begin(), ug_initial.end(), 0.01 );
@@ -26,7 +35,7 @@ int main()
     ug_initial[1] = 0.0;
     ug_initial[pt.ug_size*2] = init_thickness;
 
-    auto const& merit_function = cpt.make_merit_function(); 
+    auto const& merit_function = cpt.make_merit_function();
 
     f::simple_steepest_descent<double> sd( merit_function, pt.ug_size * 2 + 1 );
     sd.config_initial_guess( ug_initial.begin() );

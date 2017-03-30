@@ -15,7 +15,7 @@
 #include <iostream>
 #include <iomanip>
 
-void make_pattern_intensity_diff( double* cuda_ug, unsigned long* cuda_ar, double* cuda_diag, double thickness, unsigned long* cuda_dim, double* cuda_I_exp, double* cuda_I_diff, unsigned long column_index, double2* cuda_cache, unsigned long tilt_size, unsigned long max_dim );
+void make_pattern_intensity_diff( double* cuda_weights, double* cuda_ug, unsigned long* cuda_ar, double* cuda_diag, double thickness, unsigned long* cuda_dim, double* cuda_I_exp, double* cuda_I_diff, unsigned long column_index, double2* cuda_cache, unsigned long tilt_size, unsigned long max_dim );
 
 namespace f
 {
@@ -92,7 +92,7 @@ namespace f
             std::cout << "\n";
         }
 
-        cuda_pattern( pattern<value_type> const& pat, int device_id = 0 ) : config{ make_cuda_pattern_config( pat, device_id ) }, data{ config } 
+        cuda_pattern( pattern<value_type> const& pat, int device_id = 0 ) : config{ make_cuda_pattern_config( pat, device_id ) }, data{ config }
         {
             int current_id;
             cuda_assert( cudaGetDevice(&current_id) );
@@ -179,9 +179,13 @@ namespace f
                 size_type const I_exp_offset = index * config.max_dim;
                 size_type const I_exp_size = pat.intensity[index].size() * sizeof( value_type );
                 cuda_assert( cudaMemcpy( reinterpret_cast<void*>(data.I_exp + I_exp_offset), reinterpret_cast<const void*>(pat.intensity[index].data()), I_exp_size, cudaMemcpyHostToDevice ) );
+                //copy weights
+                cuda_assert( cudaMemcpy( reinterpret_cast<void*>(data.weights + I_exp_offset), reinterpret_cast<const void*>(pat.weights[index].data()), I_exp_size, cudaMemcpyHostToDevice ) );
+
             }
 
             cuda_assert( cudaMemcpy( reinterpret_cast<void*>(data.dim), reinterpret_cast<const void*>(v_dims.data()), sizeof(size_type) * v_dims.size(), cudaMemcpyHostToDevice ) );
+
         }
 
         void update_I_diff( value_type* ug, value_type thickness )
@@ -195,7 +199,7 @@ namespace f
             //std::cout << "\nbefore update_I_diff, dupm I_exp\n";
             //dump_I_exp();
 
-            make_pattern_intensity_diff( data.ug, data.ar, data.diag, config.thickness, data.dim, data.I_exp, data.I_diff, config.column_index, data.cache, config.tilt_size, config.max_dim );
+            make_pattern_intensity_diff( data.weights, data.ug, data.ar, data.diag, config.thickness, data.dim, data.I_exp, data.I_diff, config.column_index, data.cache, config.tilt_size, config.max_dim );
 
             //std::cout << "\nafter update_I_diff, dupm I_diff\n";
             //dump_I_diff();

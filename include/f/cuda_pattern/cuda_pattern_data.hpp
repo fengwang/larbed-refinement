@@ -30,6 +30,8 @@ namespace f
         value_type*                         beams;
         value_type*                         kt_factor;
 
+        value_type*                         weights;
+
         cuda_pattern_data( cuda_pattern_config const& cpc )
         {
             device_id = cpc.device_id;
@@ -74,6 +76,10 @@ namespace f
             cuda_assert( cudaMalloc( reinterpret_cast<void**>(&I_zigmoid), I_zigmoid_size ) );
             cuda_assert( cudaMemset( reinterpret_cast<void*>(I_zigmoid), 0, I_zigmoid_size ) );
 
+            size_type const weights_size = sizeof(value_type) * cpc.tilt_size * cpc.max_dim;
+            cuda_assert( cudaMalloc( reinterpret_cast<void**>(&weights), weights_size ) );
+            cuda_assert( cudaMemset( reinterpret_cast<void*>(weights), 0, weights_size ) );
+
             size_type const cache_size = sizeof(complex_type) * cpc.tilt_size * cpc.max_dim * cpc.max_dim * 6;
             cuda_assert( cudaMalloc( reinterpret_cast<void**>(&cache), cache_size ) );
             cuda_assert( cudaMemset( reinterpret_cast<void*>(cache), 0, cache_size ) );
@@ -90,6 +96,7 @@ namespace f
             if ( I_diff ) cuda_assert( cudaFree(I_diff) );
             if ( I_exp ) cuda_assert( cudaFree(I_exp) );
             if ( I_exp ) cuda_assert( cudaFree(I_zigmoid) );
+            if ( I_exp ) cuda_assert( cudaFree(weights) );
             if ( diag ) cuda_assert( cudaFree(diag) );
             if ( ug ) cuda_assert( cudaFree(ug) );
             if ( cache ) cuda_assert( cudaFree(cache) );
@@ -101,6 +108,7 @@ namespace f
             I_diff = 0;
             I_exp = 0;
             I_zigmoid = 0;
+            weights = 0;
             diag = 0;
             ug = 0;
             cache = 0;
