@@ -103,15 +103,15 @@ namespace f
             if ( beams ) cuda_assert( cudaFree(beams) );
             if ( kt_factor ) cuda_assert( cudaFree(kt_factor) );
 
-            ar = 0;
-            dim = 0;
-            I_diff = 0;
-            I_exp = 0;
-            I_zigmoid = 0;
-            weights = 0;
-            diag = 0;
-            ug = 0;
-            cache = 0;
+            ar = nullptr;
+            dim = nullptr;
+            I_diff = nullptr;
+            I_exp = nullptr;
+            I_zigmoid = nullptr;
+            weights = nullptr;
+            diag = nullptr;
+            ug = nullptr;
+            cache = nullptr;
         }
 
     };//struct cuda_pattern_data
