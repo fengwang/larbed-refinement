@@ -20,7 +20,7 @@ namespace f
     matrix<T,D,A> const rand( const std::size_t r, const std::size_t c )
     {
         matrix<T> ans{ r, c };
-        std::srand(static_cast<unsigned int>(static_cast<std::size_t>(std::time(0)) + reinterpret_cast<std::size_t>(&ans)));
+        std::srand(static_cast<unsigned int>(static_cast<std::size_t>(std::time(nullptr)) + reinterpret_cast<std::size_t>(&ans)));
         auto const generator = [](){ return T(std::rand())/T(RAND_MAX); };
         //std::fill( ans.diag_begin(), ans.diag_end(), T(1) );
         std::generate( ans.begin(), ans.end(), generator );

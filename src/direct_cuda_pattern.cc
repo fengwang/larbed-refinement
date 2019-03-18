@@ -11,7 +11,8 @@
 int main()
 {
     int const thickness_ = 14.5;
-    int gpu_id = 1;
+    //int gpu_id = 1;
+    int gpu_id = 0;
     double const init_thickness = thickness_;
     std::complex<double> const thickness{ 0.0, init_thickness  };
     auto pt = f::make_simulated_pattern("testdata/new_txt", thickness);

@@ -31,7 +31,7 @@ namespace f
 
         seed_type operator()() const
         {
-            const seed_type  s = time(0);
+            const seed_type  s = time(nullptr);
             int * i = new int;
             seed_type  ans = s + ( reinterpret_cast<seed_type>(i) | (reinterpret_cast<seed_type>(i) << 32) );
             ans = ( ans & 0x5555555555555555ULL ) <<  1 | ( ans & 0xAAAAAAAAAAAAAAAAULL ) >>  1;
