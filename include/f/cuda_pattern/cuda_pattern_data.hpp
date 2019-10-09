@@ -31,6 +31,7 @@ namespace f
         value_type*                         kt_factor;
 
         value_type*                         weights;
+        double2*                            a; //just use to dumpy A matrices
 
         cuda_pattern_data( cuda_pattern_config const& cpc )
         {
@@ -83,6 +84,10 @@ namespace f
             size_type const cache_size = sizeof(complex_type) * cpc.tilt_size * cpc.max_dim * cpc.max_dim * 6;
             cuda_assert( cudaMalloc( reinterpret_cast<void**>(&cache), cache_size ) );
             cuda_assert( cudaMemset( reinterpret_cast<void*>(cache), 0, cache_size ) );
+
+            size_type const a_size = sizeof(double2) * cpc.tilt_size * cpc.max_dim * cpc.max_dim;
+            cuda_assert( cudaMalloc( reinterpret_cast<void**>(&a), a_size ) );
+            cuda_assert( cudaMemset( reinterpret_cast<void*>(a), 0, a_size ) );
         }
 
         ~cuda_pattern_data()
@@ -91,6 +96,7 @@ namespace f
             cuda_assert( cudaGetDevice(&current_id) );
             if ( current_id != device_id ) cuda_assert( cudaSetDevice( device_id ) );
 
+            if ( a ) cuda_assert( cudaFree(a) );
             if ( ar ) cuda_assert( cudaFree(ar) );
             if ( dim ) cuda_assert( cudaFree(dim) );
             if ( I_diff ) cuda_assert( cudaFree(I_diff) );
@@ -103,6 +109,7 @@ namespace f
             if ( beams ) cuda_assert( cudaFree(beams) );
             if ( kt_factor ) cuda_assert( cudaFree(kt_factor) );
 
+            a = nullptr;
             ar = nullptr;
             dim = nullptr;
             I_diff = nullptr;

@@ -15,7 +15,7 @@
 #include <iostream>
 #include <iomanip>
 
-void make_pattern_intensity_diff( double* cuda_weights, double* cuda_ug, unsigned long* cuda_ar, double* cuda_diag, double thickness, unsigned long* cuda_dim, double* cuda_I_exp, double* cuda_I_diff, unsigned long column_index, double2* cuda_cache, unsigned long tilt_size, unsigned long max_dim );
+void make_pattern_intensity_diff( double* cuda_weights, double* cuda_ug, unsigned long* cuda_ar, double* cuda_diag, double thickness, unsigned long* cuda_dim, double* cuda_I_exp, double* cuda_I_diff, unsigned long column_index, double2* cuda_cache, unsigned long tilt_size, unsigned long max_dim, double2* a );
 
 namespace f
 {
@@ -43,16 +43,25 @@ namespace f
 
         void dump_a()
         {
-            matrix<double> a{ config.max_dim, config.max_dim+config.max_dim };
+            std::vector<double> a; // cache GPU memeory of A
+            a.resize( 2 * config.tilt_size * config.max_dim * config.max_dim );
 
             int current_id;
             cuda_assert( cudaGetDevice(&current_id) );
             if ( current_id != config.device_id ) cuda_assert( cudaSetDevice( config.device_id ) );
+            device_to_host_copy_n( data.a, a.size(), &a[0][0] );
 
-            device_to_host_copy_n( data.cache, a.size(), &a[0][0] );
+            std::vector<size_type> dims; // cache dimension of each matrix
+            dims.resize( config.tilt_size );
+            device_to_host_copy_n( data.dim, config.tilt_size, dims.data() );
 
-            std::cout << "a is \n";
-            std::cout << a << "\n";
+            unsigned long const matrix_offset = 2 * config.max_dim * config.max_dim;
+            for ( auto idx = 0UL; idx != config.tilt_size; ++idx )
+            {
+                matrix<std::complex<double>> mat{ dims[idx], dims[idx] };
+                std::copy_n( a + idx * matrix_offset, mat.size()*2, reinterpret_cast<double>( mat.data() ) ); // direct memory copy
+                mat.save_as( std::string{"./dumped_a_"} + std::to_string(idx) + std::string{".txt"} );
+            }
         }
 
         void dump_I_diff()
@@ -199,7 +208,7 @@ namespace f
             //std::cout << "\nbefore update_I_diff, dupm I_exp\n";
             //dump_I_exp();
 
-            make_pattern_intensity_diff( data.weights, data.ug, data.ar, data.diag, config.thickness, data.dim, data.I_exp, data.I_diff, config.column_index, data.cache, config.tilt_size, config.max_dim );
+            make_pattern_intensity_diff( data.weights, data.ug, data.ar, data.diag, config.thickness, data.dim, data.I_exp, data.I_diff, config.column_index, data.cache, config.tilt_size, config.max_dim, data.a );
 
             //std::cout << "\nafter update_I_diff, dupm I_diff\n";
             //dump_I_diff();

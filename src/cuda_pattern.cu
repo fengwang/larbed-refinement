@@ -236,7 +236,7 @@ __global__ void Dznrm2( unsigned long int n, double2* x, double* the_norm )
     }
 
 __global__ void
-compose_a( double* ug, unsigned long* ar, double* diag, double thickness, double2* a, unsigned long dim )
+compose_a( double* ug, unsigned long* ar, double* diag, double thickness, double2* a, unsigned long dim, double2* A )
 {
     int const row_index = threadIdx.x;
 
@@ -246,10 +246,12 @@ compose_a( double* ug, unsigned long* ar, double* diag, double thickness, double
         unsigned long const ug_index = *(ar+a_offset);
         //*(a+a_offset) = make_cuDoubleComplex( *(ug+ug_index+ug_index), *(ug+ug_index+ug_index+1) );
         *(a+a_offset) = make_cuDoubleComplex( -thickness * (*(ug+ug_index+ug_index+1)), thickness *( *(ug+ug_index+ug_index)) );
+        *(A+a_offset) = *(a+a_offset);
     }
 
     //*(a+row_index*dim+row_index) = make_cuDoubleComplex( *(diag+row_index), 0.0 );
     *(a+row_index*dim+row_index) = make_cuDoubleComplex( 0.0, thickness *( *(diag+row_index) ) );
+    *(A+row_index*dim+row_index) = *(a+row_index*dim+row_index);
 }
 
 __global__ void
@@ -305,7 +307,7 @@ sum_diag( double2* a, unsigned long dim, double real, double imag )
  * 6) extract one column
  */
 __global__ void
-make_individual_pattern_intensity_diff( double* cuda_weights, double* cuda_ug, unsigned long* cuda_ar, double* cuda_diag, double thickness, unsigned long* cuda_dim, double* cuda_I_exp, double* cuda_I_diff, unsigned long column_index, double2* cuda_cache, unsigned long max_dim, unsigned long tilt_size )
+make_individual_pattern_intensity_diff( double* cuda_weights, double* cuda_ug, unsigned long* cuda_ar, double* cuda_diag, double thickness, unsigned long* cuda_dim, double* cuda_I_exp, double* cuda_I_diff, unsigned long column_index, double2* cuda_cache, unsigned long max_dim, unsigned long tilt_size, double2* cuda_a )
 {
     unsigned long const tilt_index = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -323,6 +325,7 @@ make_individual_pattern_intensity_diff( double* cuda_weights, double* cuda_ug, u
     unsigned long dimdim = dim*dim;
 
     //cache should be of size 6*N^2
+    double2* a_copy = cuda_a;
     double2* a_ = cache;
     double2* aa_ = a_ + dimdim;
     double2* aaa_ = aa_ + dimdim;
@@ -337,7 +340,7 @@ make_individual_pattern_intensity_diff( double* cuda_weights, double* cuda_ug, u
     double2* s_ = aaa_;
 
     //1)
-    kernel_assert( (compose_a<<<1, dim>>>( ug, ar, diag, thickness, a_, dim )) );
+    kernel_assert( (compose_a<<<1, dim>>>( ug, ar, diag, thickness, a_, dim, a_copy )) );
     cuda_assert( cudaDeviceSynchronize() );
 
     //2)
@@ -450,12 +453,12 @@ make_individual_pattern_intensity_diff( double* cuda_weights, double* cuda_ug, u
     cuda_assert( cudaDeviceSynchronize() );
 }
 
-void make_pattern_intensity_diff( double* cuda_weights, double* cuda_ug, unsigned long* cuda_ar, double* cuda_diag, double thickness, unsigned long* cuda_dim, double* cuda_I_exp, double* cuda_I_diff, unsigned long column_index, double2* cuda_cache, unsigned long tilt_size, unsigned long max_dim )
+void make_pattern_intensity_diff( double* cuda_weights, double* cuda_ug, unsigned long* cuda_ar, double* cuda_diag, double thickness, unsigned long* cuda_dim, double* cuda_I_exp, double* cuda_I_diff, unsigned long column_index, double2* cuda_cache, unsigned long tilt_size, unsigned long max_dim, double2* cuda_a )
 {
     unsigned long const threads = 64;
     unsigned long const grids = (tilt_size + threads - 1)/threads;
 
-    kernel_assert( ( make_individual_pattern_intensity_diff<<<grids, threads>>>( cuda_weights, cuda_ug, cuda_ar, cuda_diag, thickness, cuda_dim, cuda_I_exp, cuda_I_diff, column_index, cuda_cache, max_dim, tilt_size ) ) );
+    kernel_assert( ( make_individual_pattern_intensity_diff<<<grids, threads>>>( cuda_weights, cuda_ug, cuda_ar, cuda_diag, thickness, cuda_dim, cuda_I_exp, cuda_I_diff, column_index, cuda_cache, max_dim, tilt_size, cuda_a ) ) );
     cuda_assert( cudaDeviceSynchronize() );
 }
 

@@ -77,6 +77,8 @@ int main()
     std::copy( ug_initial.begin(), ug_initial.end(), reinterpret_cast<double*>(rug.data()) );
     std::cout << "\nsolution:\n" << rug << "\n";
 
+    cpt.dump_a();
+
     return 0;
 }
 
